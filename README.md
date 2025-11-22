@@ -296,7 +296,7 @@ To modify the mock services:
 
 ## Resources
 
-- [Mountebank Official Documentation](http://www.mbtest.org/)
+- [Mountebank Official Documentation](https://www.mbtest.dev/docs/gettingStarted)
 - [Mountebank GitHub](https://github.com/bbyars/mountebank)
 - [Docker Documentation](https://docs.docker.com/)
 
