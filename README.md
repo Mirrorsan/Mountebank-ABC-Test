@@ -77,12 +77,18 @@ docker rm -f mountebank-test; docker build -t mountebank-abctest .; docker run -
 | Service C | `curl http://localhost:3003/api/c` | Returns `{"service":"C","status":"C_CALLED"}` |
 | Service A | `curl http://localhost:3001/api/a` | Orchestrator - calls B → C and returns combined results |
 
-### Expected Response from Service A
+### Test Success Flow (B passes, C is called)
+
+```bash
+curl http://localhost:3001/api/a
+```
+
+### Expected Response from Service A (Success)
 
 ```json
 {
   "from": "A",
-  "message": "A called B then C",
+  "message": "A called B then C successfully",
   "bResult": {
     "service": "B",
     "status": "B_PASSED"
@@ -93,6 +99,29 @@ docker rm -f mountebank-test; docker build -t mountebank-abctest .; docker run -
   }
 }
 ```
+
+### Test Failure Flow (Force B to fail, C is NOT called)
+
+```bash
+curl -H "X-Fail-B: true" http://localhost:3001/api/a
+```
+
+### Expected Response from Service A (Failure)
+
+```json
+{
+  "from": "A",
+  "error": "B_FAILED",
+  "message": "Service B did not pass, cannot proceed to C",
+  "bResult": {
+    "service": "B",
+    "status": "B_FAILED",
+    "message": "Service B failed due to X-Fail-B header"
+  }
+}
+```
+
+**Note:** When Service B fails, Service C is never called, demonstrating conditional orchestration.
 
 ---
 
@@ -170,7 +199,6 @@ Test01/
 ├── imposters.js        # Mountebank imposters configuration with inject functions
 ├── start.sh           # Container startup script (runs inside Docker)
 ├── README.md          # This file
-└── Note.txt           # Quick reference notes
 ```
 
 ---
