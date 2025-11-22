@@ -71,11 +71,20 @@ docker rm -f mountebank-test; docker build -t mountebank-abctest .; docker run -
 
 ## Test Endpoints
 
+### Individual Services
+
 | Service | Endpoint | Description |
 |---------|----------|-------------|
-| Service B | `curl http://localhost:3002/api/b` | Returns `{"service":"B","status":"B_PASSED"}` |
+| Service B (Success) | `curl http://localhost:3002/api/b` | Returns `{"service":"B","status":"B_PASSED"}` |
+| Service B (Failure) | `curl -H "X-Fail-B: true" http://localhost:3002/api/b` | Returns `{"service":"B","status":"B_FAILED"}` with 500 error |
 | Service C | `curl http://localhost:3003/api/c` | Returns `{"service":"C","status":"C_CALLED"}` |
-| Service A | `curl http://localhost:3001/api/a` | Orchestrator - calls B → C and returns combined results |
+
+### Orchestrated Service
+
+| Service | Endpoint | Description |
+|---------|----------|-------------|
+| Service A (Success) | `curl http://localhost:3001/api/a` | Orchestrator - calls B (pass) → C → returns combined results |
+| Service A (Failure) | `curl -H "X-Fail-B: true" http://localhost:3001/api/a` | Orchestrator - calls B (fail) → skips C → returns error |
 
 ### Test Success Flow (B passes, C is called)
 
@@ -170,24 +179,46 @@ docker ps
 
 ## Architecture
 
+### Success Flow (Default)
+
 ```
 Client Request
      ↓
 Service A (3001)
      ↓
-     ├──→ Service B (3002) → Returns "B_PASSED"
+     ├──→ Service B (3002) → Returns "B_PASSED" ✓
      │         ↓
-     └──→ Service C (3003) → Returns "C_CALLED"
+     └──→ Service C (3003) → Returns "C_CALLED" ✓
            ↓
-     Combined Response
+     Combined Response (200 OK)
+```
+
+### Failure Flow (With X-Fail-B Header)
+
+```
+Client Request + X-Fail-B Header
+     ↓
+Service A (3001)
+     ↓
+     └──→ Service B (3002) → Returns "B_FAILED" ✗
+           ↓
+     Error Response (500)
+     Service C is NOT called
 ```
 
 ### Flow Description
 
+**Success Scenario:**
 1. Client calls **Service A** at `/api/a`
 2. Service A calls **Service B** at `/api/b`
 3. If Service B returns `"B_PASSED"`, Service A then calls **Service C** at `/api/c`
 4. Service A combines results from B and C and returns to client
+
+**Failure Scenario:**
+1. Client calls **Service A** at `/api/a` with `X-Fail-B: true` header
+2. Service A forwards the header and calls **Service B** at `/api/b`
+3. Service B detects the header and returns `"B_FAILED"` with 500 status
+4. Service A **skips calling Service C** and returns error with B's response
 
 ---
 
